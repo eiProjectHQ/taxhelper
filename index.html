@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lil' Tax Helper: connection test</title>
+<style>
+/* ------------------------------------------------------------------
+   Lil' Tax Helper, Stage 1: connection test (brief version K, Section 7).
+   Colours and type follow brief Section 4 and the approved mockups.
+   ------------------------------------------------------------------ */
+:root {
+  --navy: #1B2A4A;
+  --muted: #4A5568;
+  --line: #D5DBE5;
+  --line-soft: #E3E8EF;
+  --field: #7A8599;
+  --chip: #EAF0F7;
+  --surface: #F4F6FA;
+  --green: #17703F;
+  --red: #B42318;
+  --red-text: #8C1D13;
+  --red-bg: #FEF3F2;
+  --red-line: #F2B8B5;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: #FFFFFF;
+  color: var(--navy);
+  font-family: Roboto, system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+}
+[hidden] { display: none !important; }
+h1 { margin: 0; font-size: 24px; line-height: 32px; font-weight: 500; }
+h2 { margin: 0; font-size: 20px; line-height: 28px; font-weight: 500; }
+p { margin: 0; }
+button, .button { font-family: inherit; font-size: 18px; font-weight: 500; border-radius: 10px; cursor: pointer; }
+button:disabled { cursor: default; }
+:focus-visible { outline: 3px solid #3B6FD8; outline-offset: 2px; }
+
+/* Sign in (approved mockup: passcode and name buttons on one screen) */
+.signin { max-width: 480px; margin: 0 auto; padding: 72px 24px 32px; display: flex; flex-direction: column; gap: 40px; }
+.brand { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.brand-mark { width: 64px; height: 64px; border-radius: 16px; background: var(--navy); color: #FFFFFF; display: flex; align-items: center; justify-content: center; }
+.brand h1 { font-size: 28px; line-height: 36px; text-align: center; }
+.field { display: flex; flex-direction: column; gap: 8px; }
+.field label { font-weight: 500; }
+.field input {
+  height: 52px; border: 1px solid var(--field); border-radius: 8px; padding: 0 14px;
+  font-family: inherit; font-size: 18px; color: var(--navy); background: #FFFFFF; width: 100%;
+}
+fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+legend { padding: 0; margin: 0 0 12px; font-weight: 500; }
+.names { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.btn-navy { height: 56px; border: 0; background: var(--navy); color: #FFFFFF; }
+.btn-navy:disabled { background: #6B7485; }
+
+/* Test screen */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  height: 60px; padding: 0 12px 0 16px; border-bottom: 1px solid var(--line);
+}
+.topbar-title { font-size: 18px; font-weight: 500; }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px 0 10px; border-radius: 18px; background: var(--chip); font-weight: 500; }
+.content { max-width: 560px; margin: 0 auto; padding: 24px 16px 40px; display: flex; flex-direction: column; gap: 24px; }
+.intro { color: var(--muted); }
+.step { border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.pick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.btn-outline {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  min-height: 96px; padding: 8px; border: 1.5px solid var(--navy); background: #FFFFFF; color: var(--navy); text-align: center;
+}
+.btn-outline.short { min-height: 52px; flex-direction: row; }
+.btn-outline:disabled, .btn-outline[aria-disabled="true"] { border-color: var(--line); color: #6B7485; }
+.btn-green { height: 52px; border: 0; background: var(--green); color: #FFFFFF; }
+.btn-green:disabled { background: #8FB5A0; }
+.hint { color: var(--muted); }
+.status { color: var(--navy); }
+.status:empty { display: none; }
+.photo-back { display: block; max-width: 100%; max-height: 360px; border: 1px solid var(--line-soft); border-radius: 10px; background: var(--surface); }
+.downloads { display: flex; flex-direction: column; gap: 12px; }
+
+/* Error messages: colour is never the only signal (icon + words) */
+.msg-error {
+  display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px;
+  border: 1px solid var(--red-line); border-radius: 10px; background: var(--red-bg); color: var(--red-text);
+}
+.msg-error svg { flex-shrink: 0; margin-top: 2px; color: var(--red); }
+.msg-error:empty { display: none; }
+
+/* Results log */
+.log {
+  margin: 0; padding: 12px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line-soft);
+  font-family: ui-monospace, "Roboto Mono", monospace; font-size: 16px; line-height: 1.45;
+  white-space: pre-wrap; overflow-wrap: anywhere; color: var(--navy);
+}
+</style>
+</head>
+<body>
+
+<!-- ============================ Sign in ============================ -->
+<main id="screen-signin" class="signin">
+  <div class="brand">
+    <div class="brand-mark" aria-hidden="true">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+    </div>
+    <h1>Lil' Tax Helper</h1>
+  </div>
+  <form id="signin-form" novalidate style="display: flex; flex-direction: column; gap: 32px; margin: 0">
+    <div class="field">
+      <label for="passcode-input">Passcode</label>
+      <input id="passcode-input" type="password" inputmode="numeric" autocomplete="current-password" aria-describedby="signin-error">
+    </div>
+    <fieldset>
+      <legend>Who's using it?</legend>
+      <div class="names">
+        <button type="button" class="btn-navy" id="signin-indy" data-user="Indy">Indy</button>
+        <button type="button" class="btn-navy" id="signin-aanjanee" data-user="Aanjanee">Aanjanee</button>
+      </div>
+    </fieldset>
+    <div id="signin-error" class="msg-error" role="alert" aria-live="assertive"></div>
+  </form>
+</main>
+
+<!-- ======================= Connection test ======================= -->
+<div id="screen-test" hidden>
+  <header class="topbar">
+    <span class="topbar-title">Lil' Tax Helper</span>
+    <span class="chip">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+      <span id="user-name"></span>
+    </span>
+  </header>
+  <main class="content">
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <h1>Connection test</h1>
+      <p class="intro">Stage 1. Run the three steps in order, then copy the results.</p>
+    </div>
+
+    <!-- Step 1: save a photo -->
+    <section class="step" aria-labelledby="step1-title">
+      <h2 id="step1-title">1. Save a photo</h2>
+      <div class="pick">
+        <button type="button" class="btn-outline" id="pick-camera" data-input="input-camera">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h4l2-3h4l2 3h4v13H4z"/><circle cx="12" cy="13" r="4"/></svg>
+          Take a photo
+        </button>
+        <button type="button" class="btn-outline" id="pick-gallery" data-input="input-gallery">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></svg>
+          Choose from gallery
+        </button>
+        <!-- The real file pickers stay hidden; the buttons above open them. -->
+        <input id="input-camera" type="file" accept="image/*" capture="environment" hidden>
+        <input id="input-gallery" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+      </div>
+      <p class="hint">JPG, PNG or WEBP, up to 20 MB</p>
+      <p id="step1-status" class="status" role="status" aria-live="polite"></p>
+      <div id="step1-error" class="msg-error" role="alert" aria-live="assertive"></div>
+    </section>
+
+    <!-- Step 2: show it back -->
+    <section class="step" aria-labelledby="step2-title">
+      <h2 id="step2-title">2. Show it back</h2>
+      <p class="hint" id="step2-hint">Runs by itself once the photo is saved.</p>
+      <img id="photo-back" class="photo-back" alt="The saved photo, loaded back from Google Drive" hidden>
+      <p id="step2-status" class="status" role="status" aria-live="polite"></p>
+      <div id="step2-error" class="msg-error" role="alert" aria-live="assertive"></div>
+    </section>
+
+    <!-- Step 3: large PDF -->
+    <section class="step" aria-labelledby="step3-title">
+      <h2 id="step3-title">3. Large PDF</h2>
+      <p class="hint">Makes a PDF the size of a 70-receipt report from copies of your photo, then downloads it two ways.</p>
+      <button type="button" id="make-pdf" class="btn-green" disabled>Make test PDF</button>
+      <p id="step3-status" class="status" role="status" aria-live="polite"></p>
+      <div class="downloads">
+        <button type="button" id="download-whole" class="btn-outline short" disabled>Download in one piece</button>
+        <button type="button" id="download-pieces" class="btn-outline short" disabled>Download in 8 MB pieces</button>
+      </div>
+      <p id="download-status" class="status" role="status" aria-live="polite"></p>
+      <div id="step3-error" class="msg-error" role="alert" aria-live="assertive"></div>
+    </section>
+
+    <!-- Results -->
+    <section class="step" aria-labelledby="results-title">
+      <h2 id="results-title">Results</h2>
+      <pre id="results-log" class="log" tabindex="0" aria-label="Results log"></pre>
+      <button type="button" id="copy-results" class="btn-outline short">Copy results</button>
+      <p id="copy-status" class="status" role="status" aria-live="polite"></p>
+    </section>
+  </main>
+</div>
+
+<script>
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Settings
+// ---------------------------------------------------------------------------
+
+// The Apps Script web app address (the /exec URL from Deploy > Manage deployments).
+// It is not a secret: every request still needs the passcode.
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbygXnZxFtvCwYp82GwUu7ZB1YF5yyE1H705wQ8_n9uqc9epmAjkVvZo-QPKTUb_aIqu/exec';
+
+const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;   // brief Section 2.3.2: up to 20 MB
+const MAX_PHOTO_BYTES = 512000;              // brief Section 5.4: compressed to 500 KB or less
+const START_LONG_SIDE = 2000;                // first try at this many pixels on the long side
+const JPEG_QUALITIES = [0.9, 0.8, 0.7, 0.6, 0.5];
+const CHUNK_BYTES = 8 * 1024 * 1024;         // matches MAX_CHUNK_BYTES in Code.gs
+const PASSCODE_KEY = 'taxhelper-passcode';   // sessionStorage key (brief Section 5.3)
+
+const NOT_AN_IMAGE = 'This file could not be opened as an image.';
+const NO_SIGNAL = 'Couldn\'t reach Google. Check your signal, then try again.';
+
+// Everything the page knows lives here, in memory only (brief Section 5.3).
+const state = {
+  passcode: '',
+  user: '',
+  photoId: '',
+  photoName: '',
+  pdfId: '',
+  pdfName: '',
+  pdfBytes: 0
+};
+
+const el = (id) => document.getElementById(id);
+
+// ---------------------------------------------------------------------------
+// Talking to the Apps Script
+// ---------------------------------------------------------------------------
+
+/**
+ * Sends one request. Plain-text content avoids a CORS pre-flight, which Apps Script
+ * does not answer. Returns the parsed reply; throws on a network or server failure.
+ */
+async function callScript(action, fields) {
+  const body = JSON.stringify(Object.assign({ action: action, passcode: state.passcode }, fields || {}));
+  let response;
+  try {
+    response = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: body,
+      redirect: 'follow'
+    });
+  } catch (err) {
+    throw new PageError(NO_SIGNAL, 'network: ' + err.message);
+  }
+  if (!response.ok) {
+    throw new PageError('Google replied with an error (HTTP ' + response.status + '). Try again.', 'http ' + response.status);
+  }
+  let reply;
+  try {
+    reply = await response.json();
+  } catch (err) {
+    throw new PageError('Google sent a reply this page could not read.', 'bad json: ' + err.message);
+  }
+  if (!reply.ok) {
+    throw new PageError(messageFor(reply.error), 'script error: ' + reply.error + (reply.detail ? ' (' + reply.detail + ')' : ''));
+  }
+  return reply;
+}
+
+/** A failure with a plain-English message for the screen and a technical note for the log. */
+function PageError(message, detail) {
+  this.message = message;
+  this.detail = detail;
+}
+
+/** Plain-English wording for each error code the script can send. */
+function messageFor(code) {
+  const messages = {
+    'passcode': 'That passcode didn\'t work.',
+    'passcode-not-set': 'The passcode hasn\'t been set up in the script yet.',
+    'photo-too-large': 'The compressed photo was over 500 KB, so it was not saved.',
+    'not-found': 'That file is no longer in Google Drive.',
+    'not-allowed': 'That file is outside the test folder.',
+    'chunk-failed': 'Google Drive would not send that piece of the file.'
+  };
+  return messages[code] || 'Something went wrong in the script (' + code + ').';
+}
+
+// ---------------------------------------------------------------------------
+// Messages and results log
+// ---------------------------------------------------------------------------
+
+const ERROR_ICON =
+  '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+  'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/>' +
+  '<path d="M12 7v6M12 16.5v.5"/></svg>';
+
+/** Shows an error (icon and words) in the given box, or clears it when text is empty. */
+function showError(boxId, text) {
+  const box = el(boxId);
+  box.textContent = '';
+  if (!text) {
+    return;
+  }
+  box.insertAdjacentHTML('afterbegin', ERROR_ICON);
+  const words = document.createElement('span');
+  words.textContent = text;
+  box.appendChild(words);
+}
+
+/** Adds one line to the results log. */
+function log(line) {
+  const out = el('results-log');
+  out.textContent += (out.textContent ? '\n' : '') + line;
+}
+
+function seconds(ms) {
+  return (ms / 1000).toFixed(1) + ' s';
+}
+
+function kb(bytes) {
+  return Math.round(bytes / 1024) + ' KB';
+}
+
+function mb(bytes) {
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+/** Marks a button busy (or not) while a request runs. */
+function setBusy(button, busy, busyText) {
+  if (busy) {
+    button.dataset.label = button.textContent;
+    button.textContent = busyText;
+    button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
+  } else {
+    if (button.dataset.label) {
+      button.textContent = button.dataset.label;
+    }
+    button.removeAttribute('aria-busy');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Sign in
+// ---------------------------------------------------------------------------
+
+async function signIn(user, button) {
+  showError('signin-error', '');
+  const passcode = el('passcode-input').value.trim();
+  if (!passcode) {
+    showError('signin-error', 'Enter the passcode.');
+    el('passcode-input').focus();
+    return;
+  }
+  state.passcode = passcode;
+  setBusy(button, true, 'Checking…');
+  try {
+    await callScript('check');
+  } catch (err) {
+    state.passcode = '';
+    showError('signin-error', err.message);
+    setBusy(button, false);
+    button.disabled = false;
+    return;
+  }
+  setBusy(button, false);
+  button.disabled = false;
+  state.user = user;
+  try {
+    sessionStorage.setItem(PASSCODE_KEY, passcode);
+  } catch (err) {
+    // Storage can be blocked; the session still works without it.
+  }
+  el('user-name').textContent = user;
+  el('screen-signin').hidden = true;
+  el('screen-test').hidden = false;
+  log('Lil\' Tax Helper, Stage 1 connection test');
+  log('User: ' + user);
+  log('Time: ' + new Date().toLocaleString('en-AU', { timeZone: 'Australia/Brisbane' }) + ' (Brisbane)');
+  log('Browser: ' + navigator.userAgent);
+  log('Screen: ' + window.innerWidth + ' px wide, pixel ratio ' + window.devicePixelRatio);
+  log('Passcode check: passed');
+  el('screen-test').querySelector('h1').focus({ preventScroll: true });
+}
+
+// ---------------------------------------------------------------------------
+// Step 1: read, compress and save a photo
+// ---------------------------------------------------------------------------
+
+/** Opens an image file. Returns an ImageBitmap, or null if it is not a readable image. */
+async function openImage(file) {
+  try {
+    return await createImageBitmap(file);
+  } catch (err) {
+    return null;
+  }
+}
+
+/** Draws the image as a JPEG of at most MAX_PHOTO_BYTES, shrinking it if needed. */
+async function compressToJpeg(image) {
+  let longSide = Math.min(START_LONG_SIDE, Math.max(image.width, image.height));
+  while (longSide >= 400) {
+    const scale = longSide / Math.max(image.width, image.height);
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    context.fillStyle = '#FFFFFF';            // transparent PNG areas become white, not black
+    context.fillRect(0, 0, width, height);
+    context.drawImage(image, 0, 0, width, height);
+    for (const quality of JPEG_QUALITIES) {
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+      if (blob && blob.size <= MAX_PHOTO_BYTES) {
+        return { blob: blob, width: width, height: height, quality: quality };
+      }
+    }
+    longSide = Math.floor(longSide * 0.8);
+  }
+  return null;
+}
+
+/** Reads a Blob as base64 text (without the data: prefix). */
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(',')[1]);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function handlePhotoPicked(input) {
+  const file = input.files && input.files[0];
+  input.value = '';                           // lets the same file be picked again
+  if (!file) {
+    return;
+  }
+  showError('step1-error', '');
+  showError('step2-error', '');
+  el('step1-status').textContent = '';
+
+  if (file.size > MAX_UPLOAD_BYTES) {
+    showError('step1-error', 'This photo is ' + mb(file.size) + '. The limit is 20 MB.');
+    log('Photo refused: ' + mb(file.size) + ' is over 20 MB');
+    return;
+  }
+
+  el('step1-status').textContent = 'Reading the photo…';
+  const image = await openImage(file);
+  if (!image) {
+    el('step1-status').textContent = '';
+    showError('step1-error', NOT_AN_IMAGE);
+    log('Photo refused: could not be opened as an image (' + (file.type || 'unknown type') + ')');
+    return;
+  }
+
+  const started = performance.now();
+  const jpeg = await compressToJpeg(image);
+  if (!jpeg) {
+    el('step1-status').textContent = '';
+    showError('step1-error', 'This photo could not be made small enough to save.');
+    return;
+  }
+  const compressMs = performance.now() - started;
+  log('Photo picked: ' + mb(file.size) + ', ' + image.width + ' x ' + image.height + ' px');
+  log('Compressed: ' + kb(jpeg.blob.size) + ', ' + jpeg.width + ' x ' + jpeg.height + ' px, quality ' +
+      jpeg.quality + ', in ' + seconds(compressMs));
+
+  const data = await blobToBase64(jpeg.blob);
+  el('step1-status').textContent = 'Saving to Google Drive…';
+  const sendStarted = performance.now();
+  let saved;
+  try {
+    saved = await callScript('savePhoto', { user: state.user, width: jpeg.width, height: jpeg.height, data: data });
+  } catch (err) {
+    el('step1-status').textContent = '';
+    showError('step1-error', err.message);
+    log('Save failed: ' + err.detail);
+    return;
+  }
+  state.photoId = saved.fileId;
+  state.photoName = saved.name;
+  el('step1-status').textContent = 'Saved ' + saved.name + ' (' + kb(saved.bytes) + ').';
+  log('Saved: ' + saved.name + ', ' + kb(saved.bytes) + ', in ' + seconds(performance.now() - sendStarted));
+  el('make-pdf').disabled = false;
+
+  await showPhotoBack(data);
+}
+
+// ---------------------------------------------------------------------------
+// Step 2: load the saved photo back from Drive
+// ---------------------------------------------------------------------------
+
+async function showPhotoBack(sentData) {
+  el('step2-status').textContent = 'Loading it back from Google Drive…';
+  const started = performance.now();
+  let back;
+  try {
+    back = await callScript('getPhoto', { fileId: state.photoId });
+  } catch (err) {
+    el('step2-status').textContent = '';
+    showError('step2-error', err.message);
+    log('Show back failed: ' + err.detail);
+    return;
+  }
+  const same = back.data === sentData;
+  const image = el('photo-back');
+  image.src = 'data:' + back.mime + ';base64,' + back.data;
+  image.hidden = false;
+  el('step2-hint').hidden = true;
+  el('step2-status').textContent = same ? 'Loaded back, identical to what was saved.' : 'Loaded back, but it differs from what was saved.';
+  log('Shown back: ' + kb(back.bytes) + ' in ' + seconds(performance.now() - started) + ', identical: ' + (same ? 'yes' : 'NO'));
+}
+
+// ---------------------------------------------------------------------------
+// Step 3: make the large PDF and download it two ways
+// ---------------------------------------------------------------------------
+
+async function makePdf() {
+  const button = el('make-pdf');
+  showError('step3-error', '');
+  setBusy(button, true, 'Making the PDF…');
+  el('step3-status').textContent = 'This can take a minute.';
+  const started = performance.now();
+  let made;
+  try {
+    made = await callScript('makePdf', { user: state.user, photoId: state.photoId });
+  } catch (err) {
+    setBusy(button, false);
+    button.disabled = false;
+    el('step3-status').textContent = '';
+    showError('step3-error', err.message);
+    log('Make PDF failed after ' + seconds(performance.now() - started) + ': ' + err.detail);
+    return;
+  }
+  setBusy(button, false);
+  button.disabled = false;
+  state.pdfId = made.fileId;
+  state.pdfName = made.name;
+  state.pdfBytes = made.bytes;
+  el('step3-status').textContent = 'Made ' + made.name + ': ' + mb(made.bytes) + ', ' + made.pages + ' pages.';
+  log('Made PDF: ' + made.name + ', ' + made.bytes + ' bytes (' + mb(made.bytes) + '), ' + made.pages +
+      ' pages, script time ' + seconds(made.ms) + ', total ' + seconds(performance.now() - started));
+  el('download-whole').disabled = false;
+  el('download-pieces').disabled = false;
+}
+
+/** Turns base64 text into bytes. */
+function base64ToBytes(text) {
+  const binary = atob(text);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+/** Hands a file to the browser's own download. */
+function saveToPhone(parts, name) {
+  const url = URL.createObjectURL(new Blob(parts, { type: 'application/pdf' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+async function downloadWhole() {
+  const button = el('download-whole');
+  showError('step3-error', '');
+  setBusy(button, true, 'Downloading…');
+  el('download-status').textContent = '';
+  const started = performance.now();
+  try {
+    const reply = await callScript('getPdf', { fileId: state.pdfId });
+    const bytes = base64ToBytes(reply.data);
+    const fileName = state.pdfName.replace('.pdf', '-whole.pdf');
+    saveToPhone([bytes], fileName);
+    const complete = bytes.length === state.pdfBytes;
+    el('download-status').textContent = 'One piece: ' + mb(bytes.length) + (complete ? ', complete.' : ', INCOMPLETE.');
+    log('Download in one piece: ' + bytes.length + ' bytes in ' + seconds(performance.now() - started) +
+        ', complete: ' + (complete ? 'yes' : 'NO') + ', saved as ' + fileName);
+  } catch (err) {
+    showError('step3-error', err.message || 'The download failed.');
+    log('Download in one piece FAILED after ' + seconds(performance.now() - started) + ': ' + (err.detail || err.message));
+  }
+  setBusy(button, false);
+  button.disabled = false;
+}
+
+async function downloadPieces() {
+  const button = el('download-pieces');
+  showError('step3-error', '');
+  setBusy(button, true, 'Downloading…');
+  el('download-status').textContent = '';
+  const started = performance.now();
+  const parts = [];
+  let received = 0;
+  let pieces = 0;
+  try {
+    while (received < state.pdfBytes) {
+      const reply = await callScript('getPdfChunk', { fileId: state.pdfId, start: received, length: CHUNK_BYTES });
+      const bytes = base64ToBytes(reply.data);
+      if (bytes.length === 0) {
+        throw new PageError('Google Drive sent an empty piece.', 'empty chunk at ' + received);
+      }
+      parts.push(bytes);
+      received += bytes.length;
+      pieces += 1;
+      button.textContent = 'Downloading… ' + Math.round((100 * received) / state.pdfBytes) + '%';
+    }
+    const fileName = state.pdfName.replace('.pdf', '-pieces.pdf');
+    saveToPhone(parts, fileName);
+    const complete = received === state.pdfBytes;
+    el('download-status').textContent = pieces + ' pieces: ' + mb(received) + (complete ? ', complete.' : ', INCOMPLETE.');
+    log('Download in pieces: ' + pieces + ' pieces, ' + received + ' bytes in ' + seconds(performance.now() - started) +
+        ', complete: ' + (complete ? 'yes' : 'NO') + ', saved as ' + fileName);
+  } catch (err) {
+    showError('step3-error', err.message || 'The download failed.');
+    log('Download in pieces FAILED after ' + pieces + ' pieces, ' + seconds(performance.now() - started) + ': ' +
+        (err.detail || err.message));
+  }
+  setBusy(button, false);
+  button.disabled = false;
+}
+
+// ---------------------------------------------------------------------------
+// Copy results
+// ---------------------------------------------------------------------------
+
+async function copyResults() {
+  const text = el('results-log').textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    el('copy-status').textContent = 'Copied. Paste it into the chat with Claude.';
+  } catch (err) {
+    // Fallback: select the text so it can be copied by hand.
+    const range = document.createRange();
+    range.selectNodeContents(el('results-log'));
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    el('copy-status').textContent = 'Copy didn\'t work automatically. The text is selected: use your phone\'s Copy.';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Start-up
+// ---------------------------------------------------------------------------
+
+function start() {
+  try {
+    const remembered = sessionStorage.getItem(PASSCODE_KEY);
+    if (remembered) {
+      el('passcode-input').value = remembered;
+    }
+  } catch (err) {
+    // Storage blocked: the passcode is simply typed again.
+  }
+  el('screen-test').querySelector('h1').setAttribute('tabindex', '-1');
+  el('signin-indy').addEventListener('click', (event) => signIn('Indy', event.currentTarget));
+  el('signin-aanjanee').addEventListener('click', (event) => signIn('Aanjanee', event.currentTarget));
+  el('signin-form').addEventListener('submit', (event) => event.preventDefault());
+  el('pick-camera').addEventListener('click', () => el('input-camera').click());
+  el('pick-gallery').addEventListener('click', () => el('input-gallery').click());
+  el('input-camera').addEventListener('change', (event) => handlePhotoPicked(event.currentTarget));
+  el('input-gallery').addEventListener('change', (event) => handlePhotoPicked(event.currentTarget));
+  el('make-pdf').addEventListener('click', makePdf);
+  el('download-whole').addEventListener('click', downloadWhole);
+  el('download-pieces').addEventListener('click', downloadPieces);
+  el('copy-results').addEventListener('click', copyResults);
+}
+
+start();
+</script>
+</body>
+</html>
