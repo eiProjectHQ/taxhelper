@@ -6,7 +6,7 @@
 <title>Lil' Tax Helper</title>
 <style>
 /* ------------------------------------------------------------------
-   Lil' Tax Helper. Stage 2: User Stories 1-3 without OCR (brief version K).
+   Lil' Tax Helper. Stage 3: User Stories 1-3 with OCR (brief version K).
    Colours and type follow brief Section 4 and the approved mockups.
    ------------------------------------------------------------------ */
 :root {
@@ -77,6 +77,7 @@ legend { padding: 0; margin: 0 0 12px; font-weight: 500; }
 .grow { flex-grow: 1; }
 .card-row { display: flex; align-items: center; gap: 16px; width: 100%; min-height: 92px; padding: 0 16px; border: 1px solid var(--line); border-radius: 14px; background: #FFFFFF; font-size: 18px; font-weight: 500; text-align: left; }
 .pick { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; width: 100%; min-height: 148px; border: 1.5px solid var(--navy); border-radius: 14px; background: #FFFFFF; font-size: 18px; font-weight: 500; }
+.pick:disabled { border-color: var(--line); color: var(--disabled); }
 
 /* Recent receipts */
 .receipt-list { list-style: none; margin: 0; padding: 0; }
@@ -129,6 +130,10 @@ legend { padding: 0; margin: 0 0 12px; font-weight: 500; }
 .banner-text { display: flex; gap: 10px; align-items: flex-start; }
 .status:empty { display: none; }
 .status-ok { display: flex; gap: 8px; align-items: flex-start; }
+/* Receipt-reading notices: neutral when read, amber when something could not be read (brief 4) */
+.notice { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); }
+.notice svg { flex-shrink: 0; margin-top: 2px; }
+.notice-warn { border-color: #E0A526; background: #FFF6E0; color: #6B4500; }
 .done { display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 96px 8px 32px; text-align: center; }
 .done p { font-size: 22px; line-height: 30px; font-weight: 500; overflow-wrap: anywhere; }
 
@@ -302,6 +307,8 @@ dialog p { color: var(--muted); margin-bottom: 20px; }
       <img id="entry-thumb" class="thumb" alt="">
       <span class="subtle">Receipt photo</span>
     </div>
+    <!-- What the receipt reading (OCR) found: best effort, always to be checked -->
+    <div id="entry-ocr" class="notice" role="status" hidden></div>
     <div class="field readonly">
       <label for="entry-ledger-id">LedgerID</label>
       <input id="entry-ledger-id" class="input" type="text" readonly aria-describedby="entry-ledger-id-error">
@@ -406,6 +413,7 @@ const MAX_AMOUNT_CENTS = 9999999;            // $99,999.99
 const ROWS_PER_PAGE = 10;                    // brief Section 2.3.1
 const OTHER = 'Other';
 const PASSCODE_KEY = 'taxhelper-passcode';   // sessionStorage key (brief Section 5.3)
+const OCR_TIMEOUT_MS = 30000;                // stop waiting for the receipt reading after 30 seconds
 
 // Wording that the brief fixes word for word.
 const NOT_AN_IMAGE = 'This file could not be opened as an image.';
@@ -453,6 +461,14 @@ const OK_ICON =
   '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#17703F" stroke-width="2" ' +
   'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/>' +
   '<path d="M7.5 12.5l3 3 6-6.5"/></svg>';
+const INFO_ICON =
+  '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1B2A4A" stroke-width="2" ' +
+  'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/>' +
+  '<path d="M12 11v6M12 7.5v.5"/></svg>';
+const WARN_ICON =
+  '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8A5A00" stroke-width="2" ' +
+  'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l10 18H2z"/>' +
+  '<path d="M12 10v5M12 18v.5"/></svg>';
 
 // ---------------------------------------------------------------------------
 // Talking to the Apps Script
@@ -467,15 +483,22 @@ function PageError(code, message) {
 /**
  * Sends one request. Plain-text content avoids a CORS pre-flight, which Apps Script
  * does not answer. Returns the reply; throws PageError on any failure.
+ * timeoutMs (optional) gives up waiting after that long.
  */
-async function callScript(action, fields) {
+async function callScript(action, fields, timeoutMs) {
   const body = JSON.stringify(Object.assign({ action: action, passcode: state.passcode, user: state.user }, fields || {}));
+  const controller = new AbortController();
+  const timer = timeoutMs ? setTimeout(() => controller.abort(), timeoutMs) : null;
   let response;
   try {
-    response = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: body });
+    response = await fetch(SCRIPT_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: body, signal: controller.signal
+    });
   } catch (err) {
-    throw new PageError('network', NO_SIGNAL);
+    clearTimeout(timer);
+    throw controller.signal.aborted ? new PageError('timeout', messageFor('timeout')) : new PageError('network', NO_SIGNAL);
   }
+  clearTimeout(timer);
   if (!response.ok) {
     throw new PageError('http', 'Google is not answering properly right now (error ' + response.status + '). Try again shortly.');
   }
@@ -503,6 +526,9 @@ function messageFor(code) {
     'sheet-tab-missing': 'A tab is missing from the Tax_Helper_Data sheet. Check its tab names.',
     'id-limit': 'The LedgerID numbers for this financial year have run out.',
     'photo-too-large': 'The photo was still over 500 KB, so it was not saved.',
+    'ocr-not-set-up': 'Receipt reading isn\'t set up in the script yet.',
+    'ocr-failed': 'Google Drive couldn\'t read this photo.',
+    'timeout': 'Google took too long to answer.',
     'server': 'Google Drive or Sheets had a problem. Your entry is still here, so try again shortly.'
   };
   return MESSAGES[code] || messages[code] || 'Something went wrong (' + code + '). Try again.';
@@ -1180,23 +1206,76 @@ async function photoPicked(input) {
     return;
   }
   const jpeg = await compressToJpeg(image);
-  el('photo-status').textContent = '';
   if (!jpeg) {
+    el('photo-status').textContent = '';
     showError(box, 'This photo could not be made small enough to save.');
     return;
   }
+  const data = await blobToBase64(jpeg.blob);
+
+  // OCR read of the receipt before the data entry page loads (brief 2.3.2). Best effort:
+  // whatever happens, the form opens and the user checks or types the date and amount.
+  el('photo-status').textContent = 'Reading the receipt…';
+  announce('Reading the receipt');
+  setPickButtons(false);
+  let ocr;
+  try {
+    const reply = await callScript('readReceipt', { photo: data, width: jpeg.width, height: jpeg.height }, OCR_TIMEOUT_MS);
+    ocr = { date: reply.date, amount: reply.amount };
+  } catch (err) {
+    ocr = { failed: true, message: err.message };
+  }
+  setPickButtons(true);
+  el('photo-status').textContent = '';
+  if (!history.state || history.state.screen !== 'addphoto' || !state.user) {
+    return;                                   // the user moved on while the receipt was being read
+  }
+
   if (state.entry && state.entry.url) {
     URL.revokeObjectURL(state.entry.url);
   }
   state.entry = {
-    data: await blobToBase64(jpeg.blob),
+    data: data,
     width: jpeg.width,
     height: jpeg.height,
     url: URL.createObjectURL(jpeg.blob),
+    ocr: ocr,
     id: '',
     fresh: true
   };
   go('entry');
+}
+
+/** Turns the two photo buttons off while a receipt is being read, so it cannot be picked twice. */
+function setPickButtons(on) {
+  el('pick-camera').disabled = !on;
+  el('pick-gallery').disabled = !on;
+}
+
+/** Tells the user what the receipt reading found, and that it must be checked. */
+function showOcrNotice(ocr) {
+  const box = el('entry-ocr');
+  let text;
+  let warn = true;
+  if (ocr.failed) {
+    text = 'Couldn\'t read this receipt. ' + ocr.message + ' Enter the date and amount below.';
+  } else if (ocr.date && ocr.amount) {
+    text = 'Date and amount read from the receipt. Check them before you submit.';
+    warn = false;
+  } else if (ocr.date) {
+    text = 'Date read from the receipt: check it. The amount couldn\'t be read, so enter it below.';
+  } else if (ocr.amount) {
+    text = 'Amount read from the receipt: check it. The date couldn\'t be read, so it shows today.';
+  } else {
+    text = 'Couldn\'t read the date or amount from this receipt. Enter them below.';
+  }
+  box.className = warn ? 'notice notice-warn' : 'notice';
+  box.textContent = '';
+  box.insertAdjacentHTML('afterbegin', warn ? WARN_ICON : INFO_ICON);
+  const words = document.createElement('span');
+  words.textContent = text;
+  box.appendChild(words);
+  box.hidden = false;
 }
 
 // ---------------------------------------------------------------------------
@@ -1210,7 +1289,15 @@ function prepareEntry() {
   if (entry.fresh) {
     entry.fresh = false;
     el('entry-banner').hidden = true;
-    setFields('entry', { date: dateText(todayParts()), amount: '', description: '', category: '', business: 100 });
+    // Date and Amount come from the OCR read when it found them; otherwise today and blank (brief 3.1).
+    setFields('entry', {
+      date: entry.ocr.date || dateText(todayParts()),
+      amount: entry.ocr.amount || '',
+      description: '',
+      category: '',
+      business: 100
+    });
+    showOcrNotice(entry.ocr);
   }
   if (!entry.id) {
     fetchLedgerId();
