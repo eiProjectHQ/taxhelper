@@ -6,7 +6,7 @@
 <title>Lil' Tax Helper</title>
 <style>
 /* ------------------------------------------------------------------
-   Lil' Tax Helper. Stage 3: User Stories 1-3 with OCR (brief version K).
+   Lil' Tax Helper. Stage 4: the complete version 1, User Stories 1-7 (brief version K).
    Colours and type follow brief Section 4 and the approved mockups.
    ------------------------------------------------------------------ */
 :root {
@@ -142,6 +142,34 @@ dialog { width: calc(100% - 40px); max-width: 420px; padding: 24px 20px 20px; bo
 dialog::backdrop { background: rgba(27, 42, 74, 0.6); }
 dialog h2 { margin: 12px 0 8px; overflow-wrap: anywhere; }
 dialog p { color: var(--muted); margin-bottom: 20px; }
+.warn-chip { display: flex; align-items: center; gap: 10px; color: #6B4500; font-weight: 500; }
+.warn-chip span { width: 40px; height: 40px; border-radius: 20px; background: #FFF6E0; border: 1px solid #E0A526; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+/* Travel and Home-office (approved mockups): one-way / return choice, and the 12-month lists */
+.choice { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 12px; border: 1px solid var(--field); border-radius: 8px; font-size: 16px; cursor: pointer; }
+.choice input { width: 20px; height: 20px; margin: 0; accent-color: var(--navy); flex-shrink: 0; }
+.choice:has(input:checked) { border: 2px solid var(--navy); background: var(--chip); }
+.choice:focus-within { outline: 3px solid #3B6FD8; outline-offset: 2px; }
+.invalid .choice { border-color: var(--red); }
+.section { margin: 28px -16px 0; padding: 8px 16px 0; border-top: 8px solid var(--surface); }
+.section h2 { margin: 16px 0 8px; }
+.month-list, .trip-list { list-style: none; margin: 0; padding: 0; }
+.month-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 0; border: 0; border-bottom: 1px solid var(--line-soft); background: none; font-size: 16px; text-align: left; }
+.month-row .value { font-weight: 500; white-space: nowrap; }
+.month-row .value.subtle { font-weight: 400; }
+.trip-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 88px; padding: 10px 0; border: 0; border-bottom: 1px solid var(--line-soft); background: none; font-size: 16px; text-align: left; }
+.trip-text { flex-grow: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
+.trip-top { display: flex; justify-content: space-between; gap: 12px; font-weight: 500; }
+.trip-top .km { white-space: nowrap; }
+.editing { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+
+/* Generate Report */
+.report-card { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; }
+.report-card-head { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 500; }
+.report-file { display: flex; gap: 12px; align-items: flex-start; }
+.report-file svg { flex-shrink: 0; }
+.report-file-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.report-name { font-weight: 500; overflow-wrap: anywhere; }
 </style>
 </head>
 <body>
@@ -337,23 +365,202 @@ dialog p { color: var(--muted); margin-bottom: 20px; }
   <p class="subtle">Reserved for future development</p>
 </main>
 
-<!-- Travel, Home-office and Generate Report arrive in Stage 4 (brief Section 7) -->
-<main id="screen-later" class="screen" data-screen="later" hidden>
-  <div class="screen-head"><h1 tabindex="-1" id="later-title"></h1></div>
-  <p class="subtle">This part comes in a later stage of the build.</p>
+<!-- ======================= User Story 4: Travel ======================= -->
+<main id="screen-travel" class="screen" data-screen="travel" hidden>
+  <div class="screen-head"><h1 tabindex="-1">Travel</h1></div>
+  <form id="travel-form" class="form" novalidate>
+    <div class="field readonly">
+      <label for="travel-id">TravelID</label>
+      <input id="travel-id" class="input" type="text" readonly aria-describedby="travel-id-error">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4A5568" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="top: 44px"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      <p id="travel-id-error" class="field-error"></p>
+      <button type="button" id="travel-id-retry" class="btn btn-outline" hidden>Try again</button>
+    </div>
+    <div id="travel-fields" class="form"></div>
+    <div id="travel-banner" class="banner" role="alert" hidden>
+      <span class="banner-text"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 7v6M12 16.5v.5"/></svg><span id="travel-banner-text"></span></span>
+      <button type="button" id="travel-retry" class="btn btn-navy"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v5h-5"/></svg>Retry</button>
+    </div>
+    <p id="travel-saved" class="status status-ok" role="status"></p>
+    <button type="submit" id="travel-submit" class="btn btn-green btn-block" style="margin-top: 8px">Submit</button>
+  </form>
+  <section class="section" aria-labelledby="travel-months-title">
+    <h2 id="travel-months-title">Last 12 months</h2>
+    <p id="travel-months-status" class="status" role="status"></p>
+    <div id="travel-months-error" class="msg-error" role="alert"></div>
+    <button type="button" id="travel-months-retry" class="btn btn-outline" hidden>Try again</button>
+    <ul id="travel-months" class="month-list"></ul>
+  </section>
+</main>
+
+<!-- ======================= User Story 4: one month's journeys ======================= -->
+<main id="screen-travelmonth" class="screen" data-screen="travelmonth" hidden>
+  <div class="screen-head">
+    <button type="button" class="back" data-go="travel"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Travel</button>
+    <h1 tabindex="-1" id="travelmonth-title"></h1>
+    <p id="travelmonth-total" class="subtle"></p>
+  </div>
+  <p id="travelmonth-status" class="status" role="status"></p>
+  <div id="travelmonth-error" class="msg-error" role="alert"></div>
+  <button type="button" id="travelmonth-retry" class="btn btn-outline" hidden>Try again</button>
+  <ul id="travelmonth-list" class="trip-list"></ul>
+</main>
+
+<!-- ======================= User Story 4: edit or delete a journey ======================= -->
+<main id="screen-trip" class="screen" data-screen="trip" hidden>
+  <div class="screen-head">
+    <button type="button" class="back" id="trip-back"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg><span id="trip-back-text"></span></button>
+    <h1 tabindex="-1">Edit journey</h1>
+  </div>
+  <form id="trip-form" class="form" novalidate>
+    <div class="field readonly">
+      <label for="trip-id">TravelID</label>
+      <input id="trip-id" class="input" type="text" readonly>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4A5568" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="top: 44px"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+    </div>
+    <div id="trip-fields" class="form"></div>
+    <div id="trip-banner" class="banner" role="alert" hidden>
+      <span class="banner-text"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 7v6M12 16.5v.5"/></svg><span id="trip-banner-text"></span></span>
+    </div>
+    <button type="submit" id="trip-save" class="btn btn-green btn-block" style="margin-top: 8px">Save changes</button>
+    <button type="button" id="trip-delete" class="btn btn-danger btn-block"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14"/></svg>Delete journey</button>
+  </form>
+</main>
+
+<!-- ======================= User Story 5: Home-office ======================= -->
+<main id="screen-homeoffice" class="screen" data-screen="homeoffice" hidden>
+  <div class="screen-head"><h1 tabindex="-1">Home-office</h1></div>
+  <form id="hours-form" class="form" novalidate>
+    <div id="hours-editing" class="notice editing" role="status" hidden>
+      <span id="hours-editing-text"></span>
+      <button type="button" id="hours-editing-stop" class="back">Clear</button>
+    </div>
+    <div class="field">
+      <div class="two">
+        <div class="field">
+          <label for="hours-month">Month</label>
+          <select id="hours-month" class="select" aria-describedby="hours-month-error"></select>
+        </div>
+        <div class="field">
+          <label for="hours-year">Year</label>
+          <select id="hours-year" class="select" aria-describedby="hours-month-error"></select>
+        </div>
+      </div>
+      <p id="hours-month-error" class="field-error"></p>
+    </div>
+    <div class="field">
+      <label for="hours-hours">Hours worked from home</label>
+      <div class="affix affix-short">
+        <input id="hours-hours" class="input" type="text" inputmode="numeric" autocomplete="off" maxlength="3" aria-describedby="hours-hours-error">
+        <span class="affix-text" aria-hidden="true">hours</span>
+      </div>
+      <p id="hours-hours-error" class="field-error"></p>
+    </div>
+    <div id="hours-banner" class="banner" role="alert" hidden>
+      <span class="banner-text"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 7v6M12 16.5v.5"/></svg><span id="hours-banner-text"></span></span>
+    </div>
+    <p id="hours-saved" class="status status-ok" role="status"></p>
+    <button type="submit" id="hours-submit" class="btn btn-green btn-block" style="margin-top: 8px">Submit</button>
+  </form>
+  <section class="section" aria-labelledby="hours-list-title">
+    <h2 id="hours-list-title">Last 12 months</h2>
+    <p id="hours-list-status" class="status" role="status"></p>
+    <div id="hours-list-error" class="msg-error" role="alert"></div>
+    <button type="button" id="hours-list-retry" class="btn btn-outline" hidden>Try again</button>
+    <ul id="hours-list" class="month-list"></ul>
+  </section>
+</main>
+
+<!-- ======================= User Story 6: Generate Report ======================= -->
+<main id="screen-report" class="screen" data-screen="report" hidden>
+  <div class="screen-head"><h1 tabindex="-1">Generate Report</h1></div>
+  <form id="report-form" class="form" novalidate>
+    <div class="field">
+      <label for="report-year">Financial year</label>
+      <select id="report-year" class="select"></select>
+    </div>
+    <button type="submit" id="report-generate" class="btn btn-green btn-block">Generate</button>
+  </form>
+  <p id="report-status" class="status" role="status" style="margin-top: 16px"></p>
+  <div id="report-error" class="msg-error" role="alert" style="margin-top: 16px"></div>
+  <div id="report-card" class="report-card" role="status" hidden>
+    <div class="report-card-head"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#17703F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>Report ready</div>
+    <div class="report-file">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1B2A4A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4"/><path d="M9 13h6M9 17h6"/></svg>
+      <span class="report-file-text">
+        <span id="report-name" class="report-name"></span>
+        <span id="report-where" class="subtle">Saved in Tax_Helper › Reports</span>
+      </span>
+    </div>
+    <button type="button" id="report-download" class="btn btn-outline btn-block"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Download PDF</button>
+    <p id="report-downloaded" class="status status-ok" role="status"></p>
+    <div id="report-download-error" class="msg-error" role="alert"></div>
+  </div>
 </main>
 
 <!-- Delete confirmation (brief 3.1 and Appendix B) -->
 <dialog id="delete-dialog" aria-labelledby="delete-title" aria-describedby="delete-body">
   <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#B42318" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14"/></svg>
   <h2 id="delete-title"></h2>
-  <p id="delete-body">This deletes the entry and its receipt photo.</p>
+  <p id="delete-body"></p>
   <div id="delete-error" class="msg-error" role="alert" style="margin-bottom: 16px"></div>
   <div class="two">
     <button type="button" id="delete-cancel" class="btn btn-outline">Cancel</button>
     <button type="button" id="delete-confirm" class="btn btn-danger-solid">Delete</button>
   </div>
 </dialog>
+
+<!-- Home-office hours already logged: Cancel or Replace (brief 3.1 and Appendix B) -->
+<dialog id="hours-dialog" aria-labelledby="hours-dialog-title" aria-describedby="hours-dialog-body">
+  <div class="warn-chip"><span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8A5A00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/></svg></span>Warning</div>
+  <h2 id="hours-dialog-title"></h2>
+  <p id="hours-dialog-body"></p>
+  <div id="hours-dialog-error" class="msg-error" role="alert" style="margin-bottom: 16px"></div>
+  <div class="two">
+    <button type="button" id="hours-dialog-cancel" class="btn btn-outline">Cancel</button>
+    <button type="button" id="hours-dialog-replace" class="btn btn-navy">Replace</button>
+  </div>
+</dialog>
+
+<!-- The journey fields, used by both Travel and Edit journey. IDs get a prefix when copied. -->
+<template id="journey-fields">
+  <div class="field" data-wrap="date">
+    <label data-for="date">Date</label>
+    <input data-field="date" class="input" type="text" inputmode="numeric" placeholder="DD/MM/YYYY" autocomplete="off" maxlength="10">
+    <p class="field-error" data-error="date"></p>
+  </div>
+  <div class="field" data-wrap="from">
+    <label data-for="from">From</label>
+    <input data-field="from" class="input" type="text" autocomplete="off" maxlength="100">
+    <p class="field-error" data-error="from"></p>
+  </div>
+  <div class="field" data-wrap="to">
+    <label data-for="to">To</label>
+    <input data-field="to" class="input" type="text" autocomplete="off" maxlength="100">
+    <p class="field-error" data-error="to"></p>
+  </div>
+  <fieldset class="field" data-field="kind" data-wrap="kind">
+    <legend>One-way / Return</legend>
+    <div class="two">
+      <label class="choice"><input type="radio" value="One-way">One-way</label>
+      <label class="choice"><input type="radio" value="Return">Return</label>
+    </div>
+    <p class="field-error" data-error="kind"></p>
+  </fieldset>
+  <div class="field" data-wrap="km">
+    <label data-for="km">Total kms travelled</label>
+    <div class="affix affix-short">
+      <input data-field="km" class="input" type="text" inputmode="numeric" autocomplete="off" maxlength="5">
+      <span class="affix-text" aria-hidden="true">km</span>
+    </div>
+    <p class="field-error" data-error="km"></p>
+  </div>
+  <div class="field" data-wrap="purpose">
+    <label data-for="purpose">Purpose</label>
+    <input data-field="purpose" class="input" type="text" autocomplete="off" maxlength="100">
+    <p class="field-error" data-error="purpose"></p>
+  </div>
+</template>
 
 <!-- The expense fields, used by both Add an expense and the edit form. IDs get a prefix when copied. -->
 <template id="expense-fields">
@@ -430,15 +637,34 @@ const MESSAGES = {
   'bad-category': 'Choose a category.',
   'new-category-empty': 'Type the new category.',
   'category-too-long': 'Keep the category to 60 characters or fewer.',
-  'description-too-long': 'Keep the description to 200 characters or fewer.'
+  'description-too-long': 'Keep the description to 200 characters or fewer.',
+  'from-empty': 'Enter where the journey started.',
+  'to-empty': 'Enter where the journey ended.',
+  'purpose-empty': 'Enter the purpose of the journey.',
+  'travel-text-too-long': 'Keep this to 100 characters or fewer.',
+  'bad-kind': 'Choose One-way or Return.',
+  'bad-km': 'Enter the kilometres as a whole number from 1 to 2,000.',
+  'bad-hours': 'Enter the hours as a whole number from 0 to 744.',
+  'month-future': 'The month can\'t be in the future.'
 };
 // Which field each server error belongs to.
 const ERROR_FIELD = {
   'bad-date': 'date', 'date-future': 'date', 'bad-amount': 'amount', 'amount-zero': 'amount',
   'amount-too-large': 'amount', 'bad-business': 'business', 'bad-category': 'category',
-  'category-too-long': 'newCategory', 'description-too-long': 'description'
+  'category-too-long': 'newCategory', 'description-too-long': 'description',
+  'from-empty': 'from', 'to-empty': 'to', 'purpose-empty': 'purpose', 'travel-text-too-long': 'purpose',
+  'bad-kind': 'kind', 'bad-km': 'km', 'bad-hours': 'hours', 'month-future': 'month'
 };
 const FIELD_NAMES = { date: 'Date', amount: 'Amount', description: 'Description', category: 'Category', newCategory: 'New category', business: 'Business-use %' };
+const TRIP_FIELD_NAMES = { date: 'Date', from: 'From', to: 'To', kind: 'One-way / Return', km: 'Total kms travelled', purpose: 'Purpose' };
+const HOURS_FIELD_NAMES = { month: 'Month', hours: 'Hours worked from home' };
+const MAX_KM = 2000;                         // brief Section 3.1
+const MAX_HOURS = 744;                       // brief Section 3.1
+const MAX_TRAVEL_TEXT = 100;
+const FIRST_REPORT_YEAR = 2025;              // brief 2.6: reports from FY25-26
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September',
+  'October', 'November', 'December'];
+const CHUNK_BYTES = 8 * 1024 * 1024;         // report pieces, if one piece fails (proven in Stage 1)
 
 // Everything the page knows lives here, in memory only (brief Section 5.3).
 const state = {
@@ -448,6 +674,12 @@ const state = {
   recent: { items: [], page: 0, loaded: false },
   detail: null,          // the receipt shown on Receipt details
   entry: null,           // the expense being added: photo, LedgerID
+  travel: { id: '', months: [] },              // the Travel form's TravelID and the 12-month list
+  trips: { year: 0, month: 0, items: [] },     // the month of journeys being looked at
+  hours: { months: [], editing: null },        // Home-office: the 12-month list, the month tapped
+  report: null,          // the last report made: { fileId, name, bytes }
+  confirm: null,         // what the delete dialog's Delete button does
+  flash: '',             // a message for the screen that Back returns to
   busy: false
 };
 
@@ -523,6 +755,9 @@ function messageFor(code) {
     'passcode': 'That passcode didn\'t work.',
     'passcode-not-set': 'The passcode hasn\'t been set up in the script yet.',
     'not-found': 'That receipt is no longer in the Ledger.',
+    'bad-year': 'Choose a financial year from the list.',
+    'not-allowed': 'That report isn\'t one of yours.',
+    'chunk-failed': 'Google Drive would not send that piece of the report.',
     'sheet-tab-missing': 'A tab is missing from the Tax_Helper_Data sheet. Check its tab names.',
     'id-limit': 'The LedgerID numbers for this financial year have run out.',
     'photo-too-large': 'The photo was still over 500 KB, so it was not saved.',
@@ -716,8 +951,8 @@ function setFields(prefix, values) {
   clearFieldErrors(prefix);
 }
 
-function clearFieldErrors(prefix) {
-  Object.keys(FIELD_NAMES).forEach((name) => setFieldError(prefix, name, ''));
+function clearFieldErrors(prefix, names) {
+  Object.keys(names || FIELD_NAMES).forEach((name) => setFieldError(prefix, name, ''));
 }
 
 /** Shows or clears one field's error: red border, icon and words, aria-invalid. */
@@ -725,7 +960,7 @@ function setFieldError(prefix, name, text) {
   const input = el(prefix + '-' + name);
   const box = el(prefix + '-' + name + '-error');
   showError(box, text);
-  input.closest('.field').classList.toggle('invalid', Boolean(text));
+  (input.matches('fieldset') ? input : input.closest('.field')).classList.toggle('invalid', Boolean(text));
   if (text) {
     input.setAttribute('aria-invalid', 'true');
   } else {
@@ -792,13 +1027,15 @@ function readFields(prefix) {
 }
 
 /** Shows field errors, moves focus to the first one and tells TalkBack users. */
-function showFieldErrors(prefix, errors) {
-  clearFieldErrors(prefix);
-  const names = Object.keys(FIELD_NAMES).filter((name) => errors[name]);
+function showFieldErrors(prefix, errors, fieldNames) {
+  const labels = fieldNames || FIELD_NAMES;
+  clearFieldErrors(prefix, labels);
+  const names = Object.keys(labels).filter((name) => errors[name]);
   names.forEach((name) => setFieldError(prefix, name, MESSAGES[errors[name]]));
   if (names.length) {
-    el(prefix + '-' + names[0]).focus();
-    announce('Check ' + names.map((name) => FIELD_NAMES[name]).join(', ') + '. ' + MESSAGES[errors[names[0]]]);
+    const first = el(prefix + '-' + names[0]);
+    (first.matches('fieldset') ? first.querySelector('input') : first).focus();
+    announce('Check ' + names.map((name) => labels[name]).join(', ') + '. ' + MESSAGES[errors[names[0]]]);
   }
 }
 
@@ -809,13 +1046,13 @@ function showFieldErrors(prefix, errors) {
 const TITLES = {
   signin: 'Lil\' Tax Helper', menu: 'Main menu', expenses: 'Expenses', recent: 'Recent receipts',
   detail: 'Receipt details', addphoto: 'Add an expense', entry: 'Add an expense', saved: 'Saved',
-  settings: 'Settings', later: ''
+  settings: 'Settings', travel: 'Travel', travelmonth: 'Travel', trip: 'Edit journey', homeoffice: 'Home-office',
+  report: 'Generate Report'
 };
-const LATER = { travel: 'Travel', homeoffice: 'Home-office', report: 'Generate Report' };
 
 /** Goes to a screen and records it in the browser history. */
 function go(name, data, replace) {
-  const target = LATER[name] ? { screen: 'later', title: LATER[name] } : Object.assign({ screen: name }, data || {});
+  const target = Object.assign({ screen: name }, data || {});
   if (replace) {
     history.replaceState(target, '');
   } else {
@@ -826,6 +1063,7 @@ function go(name, data, replace) {
 
 /** Shows the screen named in a history entry, running whatever it needs to load. */
 function show(target) {
+  target = target || {};
   let name = target && target.screen ? target.screen : 'signin';
   if (name !== 'signin' && !state.user) {
     name = 'signin';                         // after a refresh: the user is memory only (brief 5.3)
@@ -836,6 +1074,13 @@ function show(target) {
   if (name === 'detail' && !target.id) {
     name = 'recent';
   }
+  if (name === 'travelmonth' && !target.month) {
+    name = 'travel';
+  }
+  if (name === 'trip' && !findTrip(target.id)) {
+    name = state.trips.month ? 'travelmonth' : 'travel';
+    target = { screen: name, year: state.trips.year, month: state.trips.month };
+  }
   if (name === 'signin' && state.user) {
     signOut('');                             // Back from the main menu returns to sign in
   }
@@ -844,10 +1089,7 @@ function show(target) {
   el('app-header').hidden = name === 'signin';
   el('header-menu').hidden = name === 'menu';
   el('header-title').hidden = name !== 'menu';
-  const title = name === 'later' ? target.title : TITLES[name];
-  if (name === 'later') {
-    el('later-title').textContent = title;
-  }
+  const title = name === 'travelmonth' ? monthText(target.year, target.month) + ', Travel' : TITLES[name];
   document.title = name === 'signin' ? 'Lil\' Tax Helper' : title + ' · Lil\' Tax Helper';
   window.scrollTo(0, 0);
 
@@ -860,6 +1102,17 @@ function show(target) {
   } else if (name === 'addphoto') {
     showError(el('photo-error'), '');
     el('photo-status').textContent = '';
+  } else if (name === 'travel') {
+    prepareTravel(target.message || '');
+  } else if (name === 'travelmonth') {
+    loadTravelMonth(target.year, target.month, state.flash || '');
+    state.flash = '';
+  } else if (name === 'trip') {
+    prepareTrip(target.id);
+  } else if (name === 'homeoffice') {
+    prepareHours();
+  } else if (name === 'report') {
+    prepareReport();
   }
 
   const heading = document.querySelector('[data-screen="' + name + '"] h1');
@@ -874,6 +1127,10 @@ function signOut(message) {
   state.entry = null;
   state.detail = null;
   state.recent = { items: [], page: 0, loaded: false };
+  state.travel = { id: '', months: [] };
+  state.trips = { year: 0, month: 0, items: [] };
+  state.hours = { months: [], editing: null };
+  state.report = null;
   history.replaceState({ screen: 'signin' }, '');
   document.querySelectorAll('[data-screen]').forEach((screen) => { screen.hidden = screen.dataset.screen !== 'signin'; });
   el('app-header').hidden = true;
@@ -1112,11 +1369,21 @@ async function saveEdit(event) {
   }
 }
 
-function askDelete() {
-  el('delete-title').textContent = 'Delete ' + state.detail.id + '?';
+/** Asks before deleting (brief 3.1). The question names the ID (Appendix B). */
+function askToDelete(id, body, action) {
+  el('delete-title').textContent = 'Delete ' + id + '?';
+  el('delete-body').textContent = body;
   showError(el('delete-error'), '');
+  state.confirm = action;
   el('delete-dialog').showModal();
   el('delete-cancel').focus();
+}
+
+function askDelete() {
+  askToDelete(state.detail.id, 'This deletes the entry and its receipt photo.', async () => {
+    const reply = await callScript('deleteExpense', { id: state.detail.id });
+    return () => go('recent', { message: reply.id + ' deleted.' }, true);
+  });
 }
 
 async function confirmDelete() {
@@ -1126,11 +1393,11 @@ async function confirmDelete() {
   state.busy = true;
   const restore = busy(el('delete-confirm'), 'Deleting…');
   try {
-    const reply = await callScript('deleteExpense', { id: state.detail.id });
+    const next = await state.confirm();      // the action returns what to show afterwards
     restore();
     state.busy = false;
     el('delete-dialog').close();
-    go('recent', { message: reply.id + ' deleted.' }, true);
+    next();
   } catch (err) {
     restore();
     state.busy = false;
@@ -1385,6 +1652,635 @@ async function refreshCategories() {
   }
 }
 
+
+// ---------------------------------------------------------------------------
+// Months and numbers shared by Travel, Home-office and Reports
+// ---------------------------------------------------------------------------
+
+/** "October 2026". */
+function monthText(year, month) {
+  return MONTH_NAMES[month - 1] + ' ' + year;
+}
+
+/** A whole number with thousands commas: 1,276. */
+function grouped(value) {
+  return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+/** A whole number typed into a box, or null. Spaces and commas are ignored. */
+function wholeNumberText(text) {
+  const value = text.replace(/[\s,]/g, '');
+  return /^\d{1,5}$/.test(value) ? Number(value) : null;
+}
+
+/** Shows a "saved" or "deleted" line with a tick and tells TalkBack users. */
+function confirmLine(box, message) {
+  showOk(box, message);
+  if (message) {
+    announce(message);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// User Story 4: Travel
+// ---------------------------------------------------------------------------
+
+/** Copies the journey fields into a container, giving every element an ID with this prefix. */
+function buildTripFields(container, prefix) {
+  const copy = el('journey-fields').content.cloneNode(true);
+  copy.querySelectorAll('[data-field]').forEach((input) => {
+    input.id = prefix + '-' + input.dataset.field;
+    input.setAttribute('aria-describedby', prefix + '-' + input.dataset.field + '-error');
+  });
+  copy.querySelectorAll('[data-for]').forEach((label) => { label.htmlFor = prefix + '-' + label.dataset.for; });
+  copy.querySelectorAll('[data-error]').forEach((box) => { box.id = prefix + '-' + box.dataset.error + '-error'; });
+  copy.querySelectorAll('input[type="radio"]').forEach((radio) => { radio.name = prefix + '-kind'; });
+  container.appendChild(copy);
+  el(prefix + '-date').addEventListener('blur', (event) => { event.target.value = tidyDate(event.target.value); });
+}
+
+function setTripFields(prefix, values) {
+  el(prefix + '-date').value = values.date;
+  el(prefix + '-from').value = values.from;
+  el(prefix + '-to').value = values.to;
+  el(prefix + '-kind').querySelectorAll('input').forEach((radio) => { radio.checked = radio.value === values.kind; });
+  el(prefix + '-km').value = values.km === '' ? '' : String(values.km);
+  el(prefix + '-purpose').value = values.purpose;
+  clearFieldErrors(prefix, TRIP_FIELD_NAMES);
+}
+
+/** Checks the journey fields (brief 3.1). Returns { values } or { errors }. */
+function readTripFields(prefix) {
+  const errors = {};
+  const dateValue = tidyDate(el(prefix + '-date').value);
+  el(prefix + '-date').value = dateValue;
+  const date = parseDateText(dateValue);
+  if (!date) {
+    errors.date = 'bad-date';
+  } else if (dayNumber(date) > dayNumber(todayParts())) {
+    errors.date = 'date-future';
+  }
+  const text = {};
+  ['from', 'to', 'purpose'].forEach((name) => {
+    text[name] = el(prefix + '-' + name).value.replace(/\s+/g, ' ').trim();
+    if (!text[name]) {
+      errors[name] = name + '-empty';
+    } else if (text[name].length > MAX_TRAVEL_TEXT) {
+      errors[name] = 'travel-text-too-long';
+    }
+  });
+  const checked = el(prefix + '-kind').querySelector('input:checked');
+  if (!checked) {
+    errors.kind = 'bad-kind';
+  }
+  const km = wholeNumberText(el(prefix + '-km').value);
+  if (km === null || km < 1 || km > MAX_KM) {
+    errors.km = 'bad-km';
+  }
+  if (Object.keys(errors).length) {
+    return { errors: errors };
+  }
+  return { values: { date: dateValue, from: text.from, to: text.to, kind: checked.value, km: km, purpose: text.purpose } };
+}
+
+/** Opens the Travel form: a new TravelID each time the screen loads (brief 2.4), and the 12-month list. */
+function prepareTravel(message) {
+  el('travel-banner').hidden = true;
+  confirmLine(el('travel-saved'), message);
+  if (!message) {
+    setTripFields('travel', { date: dateText(todayParts()), from: '', to: '', kind: '', km: '', purpose: '' });
+  }
+  fetchTravelId();
+  loadTravelMonths();
+}
+
+async function fetchTravelId() {
+  state.travel.id = '';
+  el('travel-id').value = 'Loading…';
+  el('travel-id-retry').hidden = true;
+  showError(el('travel-id-error'), '');
+  try {
+    const reply = await callScript('nextTravelId');
+    state.travel.id = reply.id;
+    el('travel-id').value = reply.id;
+  } catch (err) {
+    el('travel-id').value = '';
+    showError(el('travel-id-error'), 'The TravelID could not be fetched. ' + err.message);
+    el('travel-id-retry').hidden = false;
+  }
+}
+
+async function submitTravel(event) {
+  if (event) {
+    event.preventDefault();
+  }
+  if (state.busy) {
+    return;
+  }
+  if (!state.travel.id) {
+    showError(el('travel-id-error'), 'Wait for the TravelID, or tap Try again.');
+    el('travel-id-retry').hidden = false;
+    el('travel-id-retry').focus();
+    return;
+  }
+  const checked = readTripFields('travel');
+  if (checked.errors) {
+    showFieldErrors('travel', checked.errors, TRIP_FIELD_NAMES);
+    return;
+  }
+  clearFieldErrors('travel', TRIP_FIELD_NAMES);
+  el('travel-banner').hidden = true;
+  showOk(el('travel-saved'), '');
+  state.busy = true;
+  const restore = busy(el('travel-submit'), 'Saving…');
+  try {
+    await callScript('saveTravel', Object.assign({ id: state.travel.id }, checked.values));
+  } catch (err) {
+    restore();
+    state.busy = false;
+    if (ERROR_FIELD[err.code]) {
+      showFieldErrors('travel', { [ERROR_FIELD[err.code]]: err.code }, TRIP_FIELD_NAMES);
+      return;
+    }
+    // The journey stays on screen with a Retry button (brief Section 3.2).
+    el('travel-banner-text').textContent = 'Not saved. ' + err.message + ' Your journey is still here.';
+    el('travel-banner').hidden = false;
+    el('travel-banner').scrollIntoView({ block: 'center' });
+    announce('Not saved. ' + err.message);
+    return;
+  }
+  restore();
+  state.busy = false;
+  const saved = state.travel.id;
+  // A fresh form with a new TravelID, so the next journey can be entered straight away.
+  setTripFields('travel', { date: dateText(todayParts()), from: '', to: '', kind: '', km: '', purpose: '' });
+  prepareTravel(saved + ' saved.');
+  el('screen-travel').querySelector('h1').focus({ preventScroll: true });
+  window.scrollTo(0, 0);
+}
+
+async function loadTravelMonths() {
+  const list = el('travel-months');
+  list.textContent = '';
+  el('travel-months-retry').hidden = true;
+  showError(el('travel-months-error'), '');
+  el('travel-months-status').textContent = 'Loading…';
+  try {
+    state.travel.months = (await callScript('listTravelMonths')).months;
+  } catch (err) {
+    el('travel-months-status').textContent = '';
+    showError(el('travel-months-error'), err.message);
+    el('travel-months-retry').hidden = false;
+    return;
+  }
+  el('travel-months-status').textContent = '';
+  state.travel.months.forEach((month) => {
+    const row = document.createElement('li');
+    const button = monthRow(monthText(month.year, month.month), grouped(month.km) + ' km', false,
+      'Journeys in ' + monthText(month.year, month.month) + ': ' + grouped(month.km) + ' km');
+    button.addEventListener('click', () => go('travelmonth', { year: month.year, month: month.month }));
+    row.appendChild(button);
+    list.appendChild(row);
+  });
+}
+
+/** One row of a 12-month list: the month, its total, and an arrow or pencil. */
+function monthRow(label, value, quiet, ariaLabel, pencil) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'month-row';
+  button.setAttribute('aria-label', ariaLabel);
+  const name = document.createElement('span');
+  name.className = 'grow';
+  name.textContent = label;
+  const total = document.createElement('span');
+  total.className = quiet ? 'value subtle' : 'value';
+  total.textContent = value;
+  button.append(name, total);
+  button.insertAdjacentHTML('beforeend', pencil
+    ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1B2A4A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>'
+    : '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4A5568" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>');
+  return button;
+}
+
+/** Lists every journey logged in one month, newest first (brief 2.4). */
+async function loadTravelMonth(year, month, message) {
+  state.trips = { year: year, month: month, items: [] };
+  el('travelmonth-title').textContent = monthText(year, month);
+  el('travelmonth-total').textContent = '';
+  const list = el('travelmonth-list');
+  list.textContent = '';
+  el('travelmonth-retry').hidden = true;
+  showError(el('travelmonth-error'), '');
+  el('travelmonth-status').textContent = 'Loading…';
+  try {
+    state.trips.items = (await callScript('listTravelMonth', { year: year, month: month })).trips;
+  } catch (err) {
+    el('travelmonth-status').textContent = '';
+    showError(el('travelmonth-error'), err.message);
+    el('travelmonth-retry').hidden = false;
+    return;
+  }
+  if (state.trips.year !== year || state.trips.month !== month) {
+    return;                                   // another month was opened meanwhile
+  }
+  confirmLine(el('travelmonth-status'), message);
+  const items = state.trips.items;
+  const km = items.reduce((sum, trip) => sum + trip.km, 0);
+  el('travelmonth-total').textContent = grouped(km) + ' km' + (items.length ? ' in ' + items.length + (items.length === 1 ? ' journey' : ' journeys') : '');
+  if (!items.length) {
+    const empty = document.createElement('li');
+    empty.className = 'subtle';
+    empty.textContent = 'No journeys logged in ' + monthText(year, month) + '.';
+    list.appendChild(empty);
+    return;
+  }
+  items.forEach((trip) => {
+    const row = document.createElement('li');
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'trip-row';
+    const text = document.createElement('span');
+    text.className = 'trip-text';
+    const top = document.createElement('span');
+    top.className = 'trip-top';
+    const route = document.createElement('span');
+    route.textContent = trip.from + ' → ' + trip.to;
+    const distance = document.createElement('span');
+    distance.className = 'km';
+    distance.textContent = grouped(trip.km) + ' km';
+    top.append(route, distance);
+    const when = document.createElement('span');
+    when.className = 'subtle';
+    when.textContent = trip.date + ' · ' + trip.kind;
+    const why = document.createElement('span');
+    why.className = 'subtle';
+    why.textContent = trip.purpose;
+    text.append(top, when, why);
+    button.appendChild(text);
+    button.insertAdjacentHTML('beforeend', '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4A5568" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>');
+    button.setAttribute('aria-label', 'Edit ' + trip.id + ': ' + trip.from + ' to ' + trip.to + ', ' + trip.date + ', ' + grouped(trip.km) + ' km');
+    button.addEventListener('click', () => go('trip', { id: trip.id, year: year, month: month }));
+    row.appendChild(button);
+    list.appendChild(row);
+  });
+}
+
+function findTrip(id) {
+  return state.trips.items.find((trip) => trip.id === id) || null;
+}
+
+/** Opens one journey for editing; TravelID cannot change. */
+function prepareTrip(id) {
+  const trip = findTrip(id);
+  el('trip-back-text').textContent = monthText(state.trips.year, state.trips.month);
+  el('trip-banner').hidden = true;
+  el('trip-id').value = trip.id;
+  setTripFields('trip', trip);
+}
+
+/** Steps back to the month's list (so the phone's Back button then goes to Travel), with a message. */
+function backToMonth(message) {
+  state.flash = message;
+  history.back();
+}
+
+async function saveTrip(event) {
+  event.preventDefault();
+  if (state.busy) {
+    return;
+  }
+  const checked = readTripFields('trip');
+  if (checked.errors) {
+    showFieldErrors('trip', checked.errors, TRIP_FIELD_NAMES);
+    return;
+  }
+  clearFieldErrors('trip', TRIP_FIELD_NAMES);
+  el('trip-banner').hidden = true;
+  state.busy = true;
+  const id = el('trip-id').value;
+  const restore = busy(el('trip-save'), 'Saving…');
+  try {
+    await callScript('updateTravel', Object.assign({ id: id }, checked.values));
+  } catch (err) {
+    restore();
+    state.busy = false;
+    if (ERROR_FIELD[err.code]) {
+      showFieldErrors('trip', { [ERROR_FIELD[err.code]]: err.code }, TRIP_FIELD_NAMES);
+      return;
+    }
+    const text = err.code === 'not-found' ? 'That journey is no longer in the Travel tab.' : 'Not saved. ' + err.message;
+    el('trip-banner-text').textContent = text;
+    el('trip-banner').hidden = false;
+    announce(text);
+    return;
+  }
+  restore();
+  state.busy = false;
+  backToMonth(id + ' saved.');
+}
+
+function askDeleteTrip() {
+  const id = el('trip-id').value;
+  askToDelete(id, 'This deletes the journey.', async () => {
+    try {
+      await callScript('deleteTravel', { id: id });
+    } catch (err) {
+      if (err.code !== 'not-found') {
+        throw err;
+      }
+    }
+    return () => backToMonth(id + ' deleted.');
+  });
+}
+
+// ---------------------------------------------------------------------------
+// User Story 5: Home-office
+// ---------------------------------------------------------------------------
+
+/** Fills the Month and Year choices and the 12-month list. Defaults to this month. */
+function prepareHours() {
+  const today = todayParts();
+  const month = el('hours-month');
+  if (!month.options.length) {
+    // July first, as the financial year runs (approved mockup).
+    [7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6].forEach((m) => month.add(new Option(MONTH_NAMES[m - 1], String(m))));
+  }
+  const year = el('hours-year');
+  year.textContent = '';
+  for (let y = FIRST_REPORT_YEAR; y <= today.y; y++) {
+    year.add(new Option(String(y), String(y)));
+  }
+  setHoursForm(today.y, today.m, '');
+  stopEditingHours();
+  el('hours-banner').hidden = true;
+  showOk(el('hours-saved'), '');
+  loadHours();
+}
+
+function setHoursForm(year, month, hours) {
+  el('hours-year').value = String(year);
+  el('hours-month').value = String(month);
+  el('hours-hours').value = hours === '' || hours === null ? '' : String(hours);
+  clearFieldErrors('hours', HOURS_FIELD_NAMES);
+}
+
+/** Tapping a row edits that month: its hours are replaced without asking again (brief 2.5). */
+function editHours(item) {
+  state.hours.editing = { year: item.year, month: item.month };
+  setHoursForm(item.year, item.month, item.hours === null ? '' : item.hours);
+  showOk(el('hours-saved'), '');
+  el('hours-banner').hidden = true;
+  el('hours-editing-text').textContent = 'Editing ' + monthText(item.year, item.month) + '.';
+  el('hours-editing').hidden = false;
+  window.scrollTo(0, 0);
+  el('hours-hours').focus();
+  el('hours-hours').select();
+}
+
+function stopEditingHours() {
+  state.hours.editing = null;
+  el('hours-editing').hidden = true;
+}
+
+/** Checks Month, Year and Hours (brief 3.1). Returns { values } or { errors }. */
+function readHoursFields() {
+  const errors = {};
+  const year = Number(el('hours-year').value);
+  const month = Number(el('hours-month').value);
+  const today = todayParts();
+  if (year * 100 + month > today.y * 100 + today.m) {
+    errors.month = 'month-future';
+  }
+  const hours = wholeNumberText(el('hours-hours').value);
+  if (hours === null || hours > MAX_HOURS) {
+    errors.hours = 'bad-hours';
+  }
+  return Object.keys(errors).length ? { errors: errors } : { values: { year: year, month: month, hours: hours } };
+}
+
+async function submitHours(event, replace) {
+  if (event) {
+    event.preventDefault();
+  }
+  if (state.busy) {
+    return;
+  }
+  const checked = readHoursFields();
+  if (checked.errors) {
+    showFieldErrors('hours', checked.errors, HOURS_FIELD_NAMES);
+    return;
+  }
+  clearFieldErrors('hours', HOURS_FIELD_NAMES);
+  const values = checked.values;
+  const editing = state.hours.editing;
+  const isEdit = Boolean(editing && editing.year === values.year && editing.month === values.month);
+  el('hours-banner').hidden = true;
+  showOk(el('hours-saved'), '');
+  state.busy = true;
+  const button = replace ? el('hours-dialog-replace') : el('hours-submit');
+  const restore = busy(button, 'Saving…');
+  let reply;
+  try {
+    reply = await callScript('saveHours', Object.assign({ replace: Boolean(replace || isEdit) }, values));
+  } catch (err) {
+    restore();
+    state.busy = false;
+    if (replace) {
+      showError(el('hours-dialog-error'), err.message);
+      return;
+    }
+    if (ERROR_FIELD[err.code]) {
+      showFieldErrors('hours', { [ERROR_FIELD[err.code]]: err.code }, HOURS_FIELD_NAMES);
+      return;
+    }
+    el('hours-banner-text').textContent = 'Not saved. ' + err.message + ' Your hours are still here.';
+    el('hours-banner').hidden = false;
+    announce('Not saved. ' + err.message);
+    return;
+  }
+  restore();
+  state.busy = false;
+  if (!reply.saved) {
+    // That month already has hours: warn, and let the user Replace or Cancel (brief 3.1).
+    el('hours-dialog-title').textContent = monthText(values.year, values.month) + ' already has ' + hoursText(reply.existing) + '.';
+    el('hours-dialog-body').textContent = 'Replace them with ' + hoursText(values.hours) + '?';
+    showError(el('hours-dialog-error'), '');
+    el('hours-dialog').showModal();
+    el('hours-dialog-cancel').focus();
+    return;
+  }
+  if (replace) {
+    el('hours-dialog').close();
+  }
+  stopEditingHours();
+  const message = monthText(values.year, values.month) + ': ' + hoursText(values.hours) + ' saved.';
+  confirmLine(el('hours-saved'), message);
+  el('hours-hours').value = '';
+  loadHours();
+}
+
+function hoursText(hours) {
+  return grouped(hours) + (hours === 1 ? ' hour' : ' hours');
+}
+
+async function loadHours() {
+  const list = el('hours-list');
+  list.textContent = '';
+  el('hours-list-retry').hidden = true;
+  showError(el('hours-list-error'), '');
+  el('hours-list-status').textContent = 'Loading…';
+  try {
+    state.hours.months = (await callScript('listHours')).months;
+  } catch (err) {
+    el('hours-list-status').textContent = '';
+    showError(el('hours-list-error'), err.message);
+    el('hours-list-retry').hidden = false;
+    return;
+  }
+  el('hours-list-status').textContent = '';
+  state.hours.months.forEach((item) => {
+    const row = document.createElement('li');
+    const label = monthText(item.year, item.month);
+    const value = item.hours === null ? 'Not logged' : hoursText(item.hours);
+    const button = monthRow(label, value, item.hours === null, 'Edit hours for ' + label + ': ' + value, true);
+    button.addEventListener('click', () => editHours(item));
+    row.appendChild(button);
+    list.appendChild(row);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// User Story 6: Generate Report
+// ---------------------------------------------------------------------------
+
+/** The financial year drop-down: FY25-26 up to the current FY, current year chosen (brief 2.6). */
+function prepareReport() {
+  const today = todayParts();
+  const current = today.m >= 7 ? today.y : today.y - 1;
+  const select = el('report-year');
+  const chosen = select.value;
+  select.textContent = '';
+  for (let y = FIRST_REPORT_YEAR; y <= current; y++) {
+    const label = 'FY' + String(y % 100).padStart(2, '0') + '-' + String((y + 1) % 100).padStart(2, '0');
+    select.add(new Option(label, label));
+  }
+  select.value = chosen && Array.from(select.options).some((o) => o.value === chosen) ? chosen : select.options[select.options.length - 1].value;
+  if (!state.report) {
+    el('report-card').hidden = true;
+  }
+  el('report-status').textContent = '';
+  showError(el('report-error'), '');
+}
+
+async function generateReport(event) {
+  event.preventDefault();
+  if (state.busy) {
+    return;
+  }
+  state.busy = true;
+  state.report = null;
+  el('report-card').hidden = true;
+  showError(el('report-error'), '');
+  el('report-status').textContent = 'Making the report. This can take a minute.';
+  announce('Making the report');
+  const restore = busy(el('report-generate'), 'Generating…');
+  try {
+    const reply = await callScript('makeReport', { year: el('report-year').value });
+    state.report = { fileId: reply.fileId, name: reply.name, bytes: reply.bytes };
+  } catch (err) {
+    restore();
+    state.busy = false;
+    el('report-status').textContent = '';
+    showError(el('report-error'), 'The report was not made. ' + err.message);
+    return;
+  }
+  restore();
+  state.busy = false;
+  el('report-status').textContent = '';
+  el('report-name').textContent = state.report.name;
+  showOk(el('report-downloaded'), '');
+  showError(el('report-download-error'), '');
+  el('report-card').hidden = false;
+  announce('Report ready. ' + state.report.name);
+  el('report-download').focus();
+}
+
+/** Turns base64 text into bytes. */
+function base64ToBytes(text) {
+  const binary = atob(text);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+/** Hands the PDF to the browser's own download (as proven in Stage 1). */
+function saveToPhone(parts, name) {
+  const url = URL.createObjectURL(new Blob(parts, { type: 'application/pdf' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+/** Downloads the report in one piece; if that fails, in 8 MB pieces. */
+async function downloadReport() {
+  if (state.busy || !state.report) {
+    return;
+  }
+  const report = state.report;
+  state.busy = true;
+  showOk(el('report-downloaded'), '');
+  showError(el('report-download-error'), '');
+  const button = el('report-download');
+  const restore = busy(button, 'Downloading…');
+  let parts = null;
+  try {
+    const whole = await callScript('getReport', { fileId: report.fileId });
+    const bytes = base64ToBytes(whole.data);
+    if (bytes.length === report.bytes) {
+      parts = [bytes];
+    }
+  } catch (err) {
+    if (err.code === 'passcode' || err.code === 'not-allowed') {
+      restore();
+      state.busy = false;
+      showError(el('report-download-error'), err.message);
+      return;
+    }
+  }
+  if (!parts) {
+    try {
+      parts = [];
+      let received = 0;
+      while (received < report.bytes) {
+        const piece = await callScript('getReportChunk', { fileId: report.fileId, start: received, length: CHUNK_BYTES });
+        const bytes = base64ToBytes(piece.data);
+        if (!bytes.length) {
+          throw new PageError('chunk-failed', messageFor('chunk-failed'));
+        }
+        parts.push(bytes);
+        received += bytes.length;
+        button.textContent = 'Downloading… ' + Math.round((100 * received) / report.bytes) + '%';
+      }
+    } catch (err) {
+      restore();
+      state.busy = false;
+      showError(el('report-download-error'), 'The download didn\'t finish. ' + err.message);
+      return;
+    }
+  }
+  restore();
+  state.busy = false;
+  saveToPhone(parts, report.name);
+  confirmLine(el('report-downloaded'), 'Downloaded to this phone.');
+}
+
 // ---------------------------------------------------------------------------
 // Start-up
 // ---------------------------------------------------------------------------
@@ -1400,6 +2296,8 @@ function start() {
   }
   buildFields(el('entry-fields'), 'entry');
   buildFields(el('edit-fields'), 'edit');
+  buildTripFields(el('travel-fields'), 'travel');
+  buildTripFields(el('trip-fields'), 'trip');
 
   el('signin-indy').addEventListener('click', (event) => signIn('Indy', event.currentTarget));
   el('signin-aanjanee').addEventListener('click', (event) => signIn('Aanjanee', event.currentTarget));
@@ -1428,6 +2326,26 @@ function start() {
   el('entry-form').addEventListener('submit', submitEntry);
   el('entry-retry').addEventListener('click', () => submitEntry(null));
   el('entry-id-retry').addEventListener('click', fetchLedgerId);
+
+  el('travel-form').addEventListener('submit', submitTravel);
+  el('travel-retry').addEventListener('click', () => submitTravel(null));
+  el('travel-id-retry').addEventListener('click', fetchTravelId);
+  el('travel-months-retry').addEventListener('click', loadTravelMonths);
+  el('travelmonth-retry').addEventListener('click', () => loadTravelMonth(state.trips.year, state.trips.month, ''));
+  el('trip-back').addEventListener('click', () => go('travelmonth', { year: state.trips.year, month: state.trips.month }));
+  el('trip-form').addEventListener('submit', saveTrip);
+  el('trip-delete').addEventListener('click', askDeleteTrip);
+
+  el('hours-form').addEventListener('submit', (event) => submitHours(event, false));
+  el('hours-dialog-cancel').addEventListener('click', () => { el('hours-dialog').close(); el('hours-hours').focus(); });
+  el('hours-dialog-replace').addEventListener('click', () => submitHours(null, true));
+  el('hours-editing-stop').addEventListener('click', () => { stopEditingHours(); el('hours-hours').focus(); });
+  el('hours-month').addEventListener('change', stopEditingHours);
+  el('hours-year').addEventListener('change', stopEditingHours);
+  el('hours-list-retry').addEventListener('click', loadHours);
+
+  el('report-form').addEventListener('submit', generateReport);
+  el('report-download').addEventListener('click', downloadReport);
 
   window.addEventListener('popstate', (event) => show(event.state));
   history.replaceState({ screen: 'signin' }, '');
