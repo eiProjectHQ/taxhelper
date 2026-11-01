@@ -83,7 +83,9 @@ legend { padding: 0; margin: 0 0 12px; font-weight: 500; }
 .receipt-list { list-style: none; margin: 0; padding: 0; }
 .receipt-row { display: flex; flex-direction: column; justify-content: center; gap: 4px; width: 100%; min-height: 72px; padding: 8px 0; border: 0; border-bottom: 1px solid var(--line-soft); background: none; text-align: left; font-size: 16px; }
 .receipt-top { display: flex; justify-content: space-between; gap: 12px; font-weight: 500; }
+.receipt-top > span:first-child { min-width: 0; overflow-wrap: anywhere; }   /* long words wrap (review finding 7) */
 .receipt-top .money { white-space: nowrap; }
+.receipt-row > .subtle { overflow-wrap: anywhere; }
 .pager { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 16px; }
 .pager .btn { min-height: 48px; font-size: 16px; }
 
@@ -155,12 +157,15 @@ dialog p { color: var(--muted); margin-bottom: 20px; }
 .section h2 { margin: 16px 0 8px; }
 .month-list, .trip-list { list-style: none; margin: 0; padding: 0; }
 .month-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 0; border: 0; border-bottom: 1px solid var(--line-soft); background: none; font-size: 16px; text-align: left; }
+.month-row .grow { min-width: 0; overflow-wrap: anywhere; }
 .month-row .value { font-weight: 500; white-space: nowrap; }
 .month-row .value.subtle { font-weight: 400; }
 .trip-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 88px; padding: 10px 0; border: 0; border-bottom: 1px solid var(--line-soft); background: none; font-size: 16px; text-align: left; }
 .trip-text { flex-grow: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
 .trip-top { display: flex; justify-content: space-between; gap: 12px; font-weight: 500; }
+.trip-top > span:first-child { min-width: 0; }
 .trip-top .km { white-space: nowrap; }
+.trip-row > svg, .month-row > svg { flex-shrink: 0; }   /* the arrow or pencil never gets squeezed out */
 .editing { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
 
 /* Generate Report */
@@ -615,6 +620,7 @@ const TIME_ZONE = 'Australia/Brisbane';      // brief Section 3.1: all dates are
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;   // brief Section 2.3.2: photos up to 20 MB
 const MAX_PHOTO_BYTES = 512000;              // brief Section 5.4: compressed to 500 KB or less
 const START_LONG_SIDE = 2000;                // first try at this many pixels on the long side
+const MIN_LONG_SIDE = 400;                   // shrinking stops here
 const JPEG_QUALITIES = [0.9, 0.8, 0.7, 0.6, 0.5];
 const MAX_AMOUNT_CENTS = 9999999;            // $99,999.99
 const ROWS_PER_PAGE = 10;                    // brief Section 2.3.1
@@ -676,7 +682,7 @@ const state = {
   entry: null,           // the expense being added: photo, LedgerID
   travel: { id: '', months: [] },              // the Travel form's TravelID and the 12-month list
   trips: { year: 0, month: 0, items: [] },     // the month of journeys being looked at
-  hours: { months: [], editing: null },        // Home-office: the 12-month list, the month tapped
+  hours: { months: [], editing: null, pending: null },   // Home-office: list, month tapped, month the warning names
   report: null,          // the last report made: { fileId, name, bytes }
   confirm: null,         // what the delete dialog's Delete button does
   flash: '',             // a message for the screen that Back returns to
@@ -757,6 +763,7 @@ function messageFor(code) {
     'not-found': 'That receipt is no longer in the Ledger.',
     'bad-year': 'Choose a financial year from the list.',
     'not-allowed': 'That report isn\'t one of yours.',
+    'drive-unavailable': 'Google Drive couldn\'t open the receipt photo just now. Nothing was changed, so try again shortly.',
     'chunk-failed': 'Google Drive would not send that piece of the report.',
     'sheet-tab-missing': 'A tab is missing from the Tax_Helper_Data sheet. Check its tab names.',
     'id-limit': 'The LedgerID numbers for this financial year have run out.',
@@ -1129,7 +1136,7 @@ function signOut(message) {
   state.recent = { items: [], page: 0, loaded: false };
   state.travel = { id: '', months: [] };
   state.trips = { year: 0, month: 0, items: [] };
-  state.hours = { months: [], editing: null };
+  state.hours = { months: [], editing: null, pending: null };
   state.report = null;
   history.replaceState({ screen: 'signin' }, '');
   document.querySelectorAll('[data-screen]').forEach((screen) => { screen.hidden = screen.dataset.screen !== 'signin'; });
@@ -1418,10 +1425,13 @@ async function openImage(file) {
   }
 }
 
-/** Draws the image as a JPEG of at most MAX_PHOTO_BYTES, shrinking it if needed. */
+/**
+ * Draws the image as a JPEG of at most MAX_PHOTO_BYTES, shrinking it if needed. A photo already
+ * smaller than 400 px is tried at its own size; 400 px only stops further shrinking (finding 8).
+ */
 async function compressToJpeg(image) {
   let longSide = Math.min(START_LONG_SIDE, Math.max(image.width, image.height));
-  while (longSide >= 400) {
+  for (;;) {
     const scale = longSide / Math.max(image.width, image.height);
     const width = Math.max(1, Math.round(image.width * scale));
     const height = Math.max(1, Math.round(image.height * scale));
@@ -1438,9 +1448,11 @@ async function compressToJpeg(image) {
         return { blob: blob, width: width, height: height };
       }
     }
-    longSide = Math.floor(longSide * 0.8);
+    if (longSide <= MIN_LONG_SIDE) {
+      return null;
+    }
+    longSide = Math.max(MIN_LONG_SIDE, Math.floor(longSide * 0.8));
   }
-  return null;
 }
 
 /** Reads a Blob as base64 text (without the data: prefix). */
@@ -2066,15 +2078,22 @@ async function submitHours(event, replace) {
   if (state.busy) {
     return;
   }
-  const checked = readHoursFields();
-  if (checked.errors) {
-    showFieldErrors('hours', checked.errors, HOURS_FIELD_NAMES);
-    return;
+  // Replace saves exactly the month and hours named in the warning, whatever the form shows now
+  // (review finding 2). Otherwise the form is read and checked.
+  let values;
+  if (replace) {
+    values = state.hours.pending;
+  } else {
+    const checked = readHoursFields();
+    if (checked.errors) {
+      showFieldErrors('hours', checked.errors, HOURS_FIELD_NAMES);
+      return;
+    }
+    clearFieldErrors('hours', HOURS_FIELD_NAMES);
+    values = checked.values;
   }
-  clearFieldErrors('hours', HOURS_FIELD_NAMES);
-  const values = checked.values;
   const editing = state.hours.editing;
-  const isEdit = Boolean(editing && editing.year === values.year && editing.month === values.month);
+  const isEdit = !replace && Boolean(editing && editing.year === values.year && editing.month === values.month);
   el('hours-banner').hidden = true;
   showOk(el('hours-saved'), '');
   state.busy = true;
@@ -2105,12 +2124,14 @@ async function submitHours(event, replace) {
     // That month already has hours: warn, and let the user Replace or Cancel (brief 3.1).
     el('hours-dialog-title').textContent = monthText(values.year, values.month) + ' already has ' + hoursText(reply.existing) + '.';
     el('hours-dialog-body').textContent = 'Replace them with ' + hoursText(values.hours) + '?';
+    state.hours.pending = values;
     showError(el('hours-dialog-error'), '');
     el('hours-dialog').showModal();
     el('hours-dialog-cancel').focus();
     return;
   }
   if (replace) {
+    state.hours.pending = null;
     el('hours-dialog').close();
   }
   stopEditingHours();
@@ -2337,7 +2358,8 @@ function start() {
   el('trip-delete').addEventListener('click', askDeleteTrip);
 
   el('hours-form').addEventListener('submit', (event) => submitHours(event, false));
-  el('hours-dialog-cancel').addEventListener('click', () => { el('hours-dialog').close(); el('hours-hours').focus(); });
+  el('hours-dialog-cancel').addEventListener('click', () => { state.hours.pending = null; el('hours-dialog').close(); el('hours-hours').focus(); });
+  el('hours-dialog').addEventListener('close', () => { state.hours.pending = null; });
   el('hours-dialog-replace').addEventListener('click', () => submitHours(null, true));
   el('hours-editing-stop').addEventListener('click', () => { stopEditingHours(); el('hours-hours').focus(); });
   el('hours-month').addEventListener('change', stopEditingHours);
